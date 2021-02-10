@@ -1,0 +1,10 @@
+/.vscode
+__pycache__
+/*.yaml
+/*.yml
+/*.bin
+/build
+/dist
+/*.egg-info
+*.pyc
+/*.log
