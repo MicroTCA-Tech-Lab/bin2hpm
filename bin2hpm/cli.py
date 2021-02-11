@@ -3,7 +3,7 @@ import os
 import sys
 import struct
 
-from bin2hpm import hpm, rle, __version__
+from bin2hpm import hpm, rle, bitfile, __version__
 
 def swap32(i):
     return struct.unpack("<I", struct.pack(">I", i))[0]
@@ -23,10 +23,6 @@ def main():
     parser.add_argument('-o', '--outfile',
                         type=str,
                         help='output file (derived from input file if not set)'
-    )
-    parser.add_argument('-b', '--bitfile',
-                        action='store_true',
-                        help='bit file mode'
     )
     parser.add_argument('-v', '--file-version',
                         default='0.0',
@@ -66,14 +62,35 @@ def main():
                         type=str,
                         help='Additional description string (max. 21 chars)'
     )
+
+    force_fmt = parser.add_mutually_exclusive_group(required=False)
+    force_fmt.add_argument('-b', '--bitfile',
+                           action='store_true',
+                           help='Force bitfile mode'
+    )
+    force_fmt.add_argument('-n', '--binfile',
+                           action='store_true',
+                           help='Force binfile mode'
+    )
+
     args = parser.parse_args()
 
+    # Determine bit file mode
+    if args.bitfile:
+        bitmode = True
+    elif args.binfile:
+        bitmode = False
+    else:
+        bitmode = os.path.splitext(args.srcfile)[1].lower() == '.bit'
+
+    # Set up arguments for HPM generator
     components = 1 << args.component
     v_maj = args.file_version[0]
     v_min = args.file_version[1]
     v_aux = swap32(args.auxillary)
 
-    header = hpm.upg_image_hdr({
+    # Build HPM upgrade image header
+    result = hpm.upg_image_hdr({
         'device_id': args.device,
         'manufacturer_id': args.manufacturer,
         'product_id': args.product,
@@ -84,15 +101,21 @@ def main():
         'version_aux': v_aux
     })
 
-    prepare = hpm.upg_action_hdr(components, hpm.UpgradeActionType.Prepare)
+    # Append HPM upgrade action (HPM prepare action)
+    result += hpm.upg_action_hdr(components, hpm.UpgradeActionType.Prepare)
 
+    # Read source file
     with open(args.srcfile, 'rb') as f:
         img_data = f.read()
 
+    # Parse bitfile if bitmode enabled
+    if bitmode:
+        img_data = bitfile.parse_bitfile(img_data)
+
+    # Compress data if compression enabled
     if args.compress:
         enc_data = rle.encode(img_data)
-        vfy_data = rle.decode(enc_data)
-        if vfy_data != img_data:
+        if rle.decode(enc_data) != img_data:
             print(f'RLE compression verify mismatch', file=sys.stderr)
             sys.exit(-1)
 
@@ -100,7 +123,8 @@ def main():
         img_comp_hdr += int.to_bytes(len(img_data), length=4, byteorder='big')
         img_data = img_comp_hdr + enc_data
 
-    update = hpm.upg_action_img(
+    # Append HPM upgrade action image
+    result += hpm.upg_action_img(
         components,
         v_maj,
         v_min,
@@ -109,12 +133,14 @@ def main():
         img_data
     )
 
+    # Append MD5 hash
+    result += hpm.upg_img_hash(result)
+
+    # Determine outfile name
     outfile = args.outfile
     if not outfile:
-        outfile = os.path.splitext(args.sourcefile)[0] + '.hpm'
+        outfile = os.path.splitext(args.srcfile)[0] + '.hpm'
 
-    hpm_file = header + prepare + update
-    hpm_file += hpm.upg_img_hash(hpm_file)
-
+    # Write HPM file
     with open(outfile, 'wb') as f:
-        f.write(hpm_file)
+        f.write(result)
