@@ -1,10 +1,17 @@
 from datetime import datetime
 import sys
+from enum import Enum
+import hashlib 
+  
+class UpgradeActionType(Enum):
+    Backup = 0
+    Prepare = 1
+    Upload = 2
 
 # name - default value - size
 
 UPG_IMG_HEADER = (
-    ( 'signature', int.from_bytes(b'PICMGFWU', 'little'), 8 ),
+    ( 'signature', 'PICMGFWU', 8 ),
     ( 'format_version', 0, 1 ),
     ( 'device_id', 0, 1 ),
     ( 'manufacturer_id', 0, 3),
@@ -22,18 +29,71 @@ UPG_IMG_HEADER = (
     ( 'oem_data_len', 0, 2 ),
 )
 
+UPG_ACTION_HEADER = (
+    ( 'action_type', 0, 1 ),
+    ( 'components', 0, 1 ),
+)
+
+UPG_ACTION_IMG_INFO = (
+    ( 'version_major', 0, 1 ),
+    ( 'version_minor', 0, 1 ),
+    ( 'version_aux', 0, 4 ),
+    ( 'desc_str', '', 21 ),
+    ( 'img_length', 0, 4 ),
+)
+
+def fixed_str(s, n):
+    s = s[:n]
+    s += '\x00' * (n - len(s))
+    return s.encode('utf-8')
+
 def zero_cksum(input):
     return int.to_bytes((0x100 - sum(input)) & 0xff, length=1, byteorder='little')
 
-def upg_img_hdr(values):
+def encode_generic(table, values):
     result = b''
-    for name, default, size in UPG_IMG_HEADER:
+    for name, default, size in table:
         val = values[name] if name in values else default
         try:
-            result += int.to_bytes(val, length=size, byteorder='little')
+            if isinstance(val, str):
+                result += fixed_str(val, size)
+            elif isinstance(val, bytes):
+                result += val[:size]
+            else:
+                result += int.to_bytes(val, length=size, byteorder='little')
+                
         except OverflowError:
-            print(f'HPM header error: {name} value of {val} doesn\'t fit in {size} bytes', file=sys.stderr)
+            print(f'{name} value of {val} doesn\'t fit in {size} bytes', file=sys.stderr)
             sys.exit(-1)
-    
+        except TypeError:
+            print(f'Couldn\'t encode {name} value of {val}', file=sys.stderr)
+            sys.exit(-1)
+    return result
+
+def upg_image_hdr(values):
+    result = encode_generic(UPG_IMG_HEADER, values)
     result += zero_cksum(result)
     return result
+
+def upg_action_hdr(components, action_type):
+    result = encode_generic(UPG_ACTION_HEADER, {
+        'action_type': action_type.value,
+        'components': components
+    })
+    result += zero_cksum(result)
+    return result
+
+def upg_action_img(components, v_maj, v_min, v_aux, description, img_data):
+    result = upg_action_hdr(components, UpgradeActionType.Upload)
+    result += encode_generic(UPG_ACTION_IMG_INFO, {
+        'version_major': v_maj,
+        'version_minor': v_min,
+        'version_aux': v_aux,
+        'desc_str': description,
+        'img_length': len(img_data)
+    })
+    result += img_data
+    return result
+
+def upg_img_hash(hpm_img):
+    return hashlib.md5(hpm_img).digest()

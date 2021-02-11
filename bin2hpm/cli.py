@@ -1,4 +1,5 @@
 import argparse
+import os
 import sys
 import struct
 
@@ -19,7 +20,7 @@ def main():
                         action='version',
                         version='%(prog)s ' + __version__
     )
-    parser.add_argument('-o', '--output',
+    parser.add_argument('-o', '--outfile',
                         type=str,
                         help='output file (derived from input file if not set)'
     )
@@ -61,16 +62,48 @@ def main():
                         action='store_true',
                         help='Enable RLE compression (requires DESY MMC)'
     )
+    parser.add_argument('-s', '--description',
+                        type=str,
+                        help='Additional description string (max. 21 chars)'
+    )
     args = parser.parse_args()
 
-    header = hpm.upg_img_hdr({
+    components = 1 << args.component
+    v_maj = args.file_version[0]
+    v_min = args.file_version[1]
+    v_aux = swap32(args.auxillary)
+
+    header = hpm.upg_image_hdr({
         'device_id': args.device,
         'manufacturer_id': args.manufacturer,
         'product_id': args.product,
         'time': 12345678,
-        'components': 1 << args.component,
-        'version_major': args.file_version[0],
-        'version_minor': args.file_version[1],
-        'version_aux':  swap32(args.auxillary)
+        'components': components,
+        'version_major': v_maj,
+        'version_minor': v_min,
+        'version_aux': v_aux
     })
-    sys.stdout.buffer.write(header)
+
+    prepare = hpm.upg_action_hdr(components, hpm.UpgradeActionType.Prepare)
+
+    with open(args.srcfile, 'rb') as f:
+        img_data = f.read()
+
+    update = hpm.upg_action_img(
+        components,
+        v_maj,
+        v_min,
+        v_aux,
+        args.description or os.path.basename(args.srcfile)[:20],
+        img_data
+    )
+
+    outfile = args.outfile
+    if not outfile:
+        outfile = os.path.splitext(args.sourcefile)[0] + '.hpm'
+
+    hpm_file = header + prepare + update
+    hpm_file += hpm.upg_img_hash(hpm_file)
+
+    with open(outfile, 'wb') as f:
+        f.write(hpm_file)
