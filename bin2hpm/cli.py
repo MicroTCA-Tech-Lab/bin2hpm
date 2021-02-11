@@ -18,9 +18,9 @@ def main():
     parser = argparse.ArgumentParser(
         description='HPM.1 update file converter'
     )
-    parser.add_argument('srcfile',
+    parser.add_argument('infile',
                         type=str,
-                        help='Source file'
+                        help='Input file'
     )
     parser.add_argument('--version',
                         action='version',
@@ -87,7 +87,7 @@ def main():
     elif args.binfile:
         bitmode = False
     else:
-        bitmode = os.path.splitext(args.srcfile)[1].lower() == '.bit'
+        bitmode = os.path.splitext(args.infile)[1].lower() == '.bit'
 
     # Set up arguments for HPM generator
     components = 1 << args.component
@@ -95,14 +95,14 @@ def main():
     v_min = args.file_version[1]
     v_aux = swap32(args.auxillary)
 
-    # Check source file existence
-    if not os.path.isfile(args.srcfile):
-        print(f'Source file {args.srcfile} not found', file=sys.stderr)
+    # Check input file existence
+    if not os.path.isfile(args.infile):
+        print(f'Input file {args.infile} not found', file=sys.stderr)
         sys.exit(-1)
 
     # Print general information
     print(f'bin2hpm v{__version__} (C) 2021 DESY\n')
-    print(f'Source {args.srcfile}, length {os.path.getsize(args.srcfile)} bytes\n')
+    print(f'Input file {args.infile}, length {os.path.getsize(args.infile)} bytes\n')
     print(f'IANA Manuf., Product 0x{args.manufacturer:06x}, 0x{args.product:04x}')
     print(f'Component {args.component}, Device {args.device}')
     print(f'FW version {v_maj}.{v_min:02d} / 0x{args.auxillary:08x}\n')
@@ -121,8 +121,8 @@ def main():
     # Append HPM upgrade action (HPM prepare action)
     result += hpm.upg_action_hdr(components, hpm.UpgradeActionType.Prepare)
 
-    # Read source file
-    with open(args.srcfile, 'rb') as f:
+    # Read input file
+    with open(args.infile, 'rb') as f:
         img_data = f.read()
 
     # Parse bitfile if bitmode enabled
@@ -148,7 +148,7 @@ def main():
         v_maj,
         v_min,
         v_aux,
-        args.description or os.path.basename(args.srcfile)[:20],
+        args.description or os.path.basename(args.infile)[:20],
         img_data
     )
 
@@ -158,7 +158,7 @@ def main():
     # Determine outfile name
     outfile = args.outfile
     if not outfile:
-        outfile = os.path.splitext(args.srcfile)[0] + '.hpm'
+        outfile = os.path.splitext(args.infile)[0] + '.hpm'
 
     # Write HPM file
     with open(outfile, 'wb') as f:
