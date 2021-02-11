@@ -56,6 +56,9 @@ def fixed_str(s, n):
 def zero_cksum(input):
     return int.to_bytes((0x100 - sum(input)) & 0xff, length=1, byteorder='little')
 
+def to_bcd(value):
+    return int(str(value), 16)
+
 def encode_generic(table, values):
     result = b''
     for name, default, size in table:
@@ -66,6 +69,8 @@ def encode_generic(table, values):
             elif isinstance(val, bytes):
                 result += val[:size]
             else:
+                if name == 'version_minor':
+                    val = to_bcd(val)
                 result += int.to_bytes(val, length=size, byteorder='little')
                 
         except OverflowError:
