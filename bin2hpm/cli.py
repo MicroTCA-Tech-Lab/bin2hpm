@@ -3,7 +3,7 @@ import os
 import sys
 import struct
 
-from bin2hpm import hpm, __version__
+from bin2hpm import hpm, rle, __version__
 
 def swap32(i):
     return struct.unpack("<I", struct.pack(">I", i))[0]
@@ -88,6 +88,17 @@ def main():
 
     with open(args.srcfile, 'rb') as f:
         img_data = f.read()
+
+    if args.compress:
+        enc_data = rle.encode(img_data)
+        vfy_data = rle.decode(enc_data)
+        if vfy_data != img_data:
+            print(f'RLE compression verify mismatch', file=sys.stderr)
+            sys.exit(-1)
+
+        img_comp_hdr = b'COMPRESSED\x00'
+        img_comp_hdr += int.to_bytes(len(img_data), length=4, byteorder='big')
+        img_data = img_comp_hdr + enc_data
 
     update = hpm.upg_action_img(
         components,
