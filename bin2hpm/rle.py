@@ -9,6 +9,9 @@ def encode(data):
             n += 1
         return n, data[0]
 
+    print('Performing RLE compression ...')
+    orig_len = len(data)
+
     result = array('B')
     while len(data):
         tmp = array('B')
@@ -28,6 +31,11 @@ def encode(data):
             continue
         result.append((n - 2) | 0x80)
         result.append(val)
+    
+    comp_len = len(result)
+    comp_ratio = 100 * comp_len / orig_len
+
+    print(f'Compressed size {comp_len} bytes, ratio {comp_ratio:.1f}%')
     return bytes(result)
 
 def decode(data):

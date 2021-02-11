@@ -46,6 +46,6 @@ def parse_bitfile(inp):
         raise ValueError('Bitstream section e missing')
 
     payload_size, inp = bs_read_u32(inp)
-    print(f'  Image size: 0x{payload_size:08x} ({int(payload_size/1024)}KiB)')
+    print(f'  Image size: 0x{payload_size:08x} ({int(payload_size/1024)}KiB)\n')
 
     return inp[:payload_size]

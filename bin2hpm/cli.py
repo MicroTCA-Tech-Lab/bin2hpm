@@ -89,12 +89,23 @@ def main():
     v_min = args.file_version[1]
     v_aux = swap32(args.auxillary)
 
+    # Check source file existence
+    if not os.path.isfile(args.srcfile):
+        print(f'Source file {args.srcfile} not found', file=sys.stderr)
+        sys.exit(-1)
+
+    # Print general information
+    print(f'bin2hpm v{__version__} (C) 2021 DESY\n')
+    print(f'Source {args.srcfile}, length {os.path.getsize(args.srcfile)} bytes\n')
+    print(f'IANA Manuf., Product 0x{args.manufacturer:06x}, 0x{args.product:04x}')
+    print(f'Component {args.component}, Device {args.device}')
+    print(f'FW version {v_maj}.{v_min:02d} / 0x{args.auxillary:08x}\n')
+
     # Build HPM upgrade image header
     result = hpm.upg_image_hdr({
         'device_id': args.device,
         'manufacturer_id': args.manufacturer,
         'product_id': args.product,
-        'time': 12345678,
         'components': components,
         'version_major': v_maj,
         'version_minor': v_min,
@@ -115,9 +126,11 @@ def main():
     # Compress data if compression enabled
     if args.compress:
         enc_data = rle.encode(img_data)
+        print('Verifying compressed data...', end='')
         if rle.decode(enc_data) != img_data:
             print(f'RLE compression verify mismatch', file=sys.stderr)
             sys.exit(-1)
+        print('OK\n')
 
         img_comp_hdr = b'COMPRESSED\x00'
         img_comp_hdr += int.to_bytes(len(img_data), length=4, byteorder='big')
@@ -144,3 +157,5 @@ def main():
     # Write HPM file
     with open(outfile, 'wb') as f:
         f.write(result)
+
+    print(f'Output file {outfile}, length {len(result)} bytes')
