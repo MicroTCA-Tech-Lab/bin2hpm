@@ -71,6 +71,8 @@ def encode_generic(table, values):
             else:
                 if name == 'version_minor':
                     val = to_bcd(val)
+                elif isinstance(val, Enum):
+                    val = val.value
                 result += int.to_bytes(val, length=size, byteorder='little')
                 
         except OverflowError:
@@ -81,27 +83,25 @@ def encode_generic(table, values):
             sys.exit(-1)
     return result
 
-def upg_image_hdr(values):
-    result = encode_generic(UPG_IMG_HEADER, values)
+def upg_image_hdr(**kwargs):
+    result = encode_generic(UPG_IMG_HEADER, kwargs)
     result += zero_cksum(result)
     return result
 
-def upg_action_hdr(components, action_type):
-    result = encode_generic(UPG_ACTION_HEADER, {
-        'action_type': action_type.value,
-        'components': components
+def upg_action_hdr(**kwargs):
+    result = encode_generic(UPG_ACTION_HEADER, kwargs)
+    result += zero_cksum(result)
+    return result
+
+def upg_action_img(img_data,**kwargs):
+
+    result = upg_action_hdr(**{
+        'action_type': UpgradeActionType.Upload,
+        **kwargs
     })
-    result += zero_cksum(result)
-    return result
-
-def upg_action_img(components, v_maj, v_min, v_aux, description, img_data):
-    result = upg_action_hdr(components, UpgradeActionType.Upload)
     result += encode_generic(UPG_ACTION_IMG_INFO, {
-        'version_major': v_maj,
-        'version_minor': v_min,
-        'version_aux': v_aux,
-        'desc_str': description,
-        'img_length': len(img_data)
+        'img_length': len(img_data),
+        **kwargs
     })
     result += img_data
     return result

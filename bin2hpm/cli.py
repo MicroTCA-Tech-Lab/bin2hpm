@@ -108,18 +108,21 @@ def main():
     print(f'FW version {v_maj}.{v_min:02d} / 0x{args.auxillary:08x}\n')
 
     # Build HPM upgrade image header
-    result = hpm.upg_image_hdr({
-        'device_id': args.device,
-        'manufacturer_id': args.manufacturer,
-        'product_id': args.product,
-        'components': components,
-        'version_major': v_maj,
-        'version_minor': v_min,
-        'version_aux': v_aux
-    })
+    result = hpm.upg_image_hdr(
+        device_id=args.device,
+        manufacturer_id=args.manufacturer,
+        product_id=args.product,
+        components=components,
+        version_major=v_maj,
+        version_minor=v_min,
+        version_aux=v_aux,
+    )
 
     # Append HPM upgrade action (HPM prepare action)
-    result += hpm.upg_action_hdr(components, hpm.UpgradeActionType.Prepare)
+    result += hpm.upg_action_hdr(
+        action_type=hpm.UpgradeActionType.Prepare,
+        components=components
+    )
 
     # Read input file
     with open(args.infile, 'rb') as f:
@@ -144,12 +147,12 @@ def main():
 
     # Append HPM upgrade action image
     result += hpm.upg_action_img(
-        components,
-        v_maj,
-        v_min,
-        v_aux,
-        args.description or os.path.basename(args.infile)[:20],
-        img_data
+        img_data,
+        components=components,
+        version_major=v_maj,
+        version_minor=v_min,
+        version_aux=v_aux,
+        desc_str=args.description or os.path.basename(args.infile)[:20]
     )
 
     # Append MD5 hash
