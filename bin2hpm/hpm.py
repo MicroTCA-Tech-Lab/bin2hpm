@@ -93,8 +93,7 @@ def upg_action_hdr(**kwargs):
     result += zero_cksum(result)
     return result
 
-def upg_action_img(img_data,**kwargs):
-
+def upg_action_img(img_data, **kwargs):
     result = upg_action_hdr(**{
         'action_type': UpgradeActionType.Upload,
         **kwargs
