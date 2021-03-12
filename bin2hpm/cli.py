@@ -9,7 +9,7 @@ import os
 import sys
 import struct
 
-from bin2hpm import hpm, rle, bitfile, __version__
+from bin2hpm import hpm_conv, bitfile, __version__
 
 def swap32(i):
     return struct.unpack("<I", struct.pack(">I", i))[0]
@@ -107,22 +107,10 @@ def main():
     print(f'Component {args.component}, Device {args.device}')
     print(f'FW version {v_maj}.{v_min:02d} / 0x{args.auxillary:08x}\n')
 
-    # Build HPM upgrade image header
-    result = hpm.upg_image_hdr(
-        device_id=args.device,
-        manufacturer_id=args.manufacturer,
-        product_id=args.product,
-        components=components,
-        version_major=v_maj,
-        version_minor=v_min,
-        version_aux=v_aux,
-    )
-
-    # Append HPM upgrade action (HPM prepare action)
-    result += hpm.upg_action_hdr(
-        action_type=hpm.UpgradeActionType.Prepare,
-        components=components
-    )
+    # Determine outfile name
+    outfile = args.outfile
+    if not outfile:
+        outfile = os.path.splitext(args.infile)[0] + '.hpm'
 
     # Read input file
     with open(args.infile, 'rb') as f:
@@ -132,37 +120,19 @@ def main():
     if bitmode:
         img_data = bitfile.parse_bitfile(img_data)
 
-    # Compress data if compression enabled
-    if args.compress:
-        enc_data = rle.encode(img_data)
-        print('Verifying compressed data...', end='')
-        if rle.decode(enc_data) != img_data:
-            print(f'RLE compression verify mismatch', file=sys.stderr)
-            sys.exit(-1)
-        print('OK\n')
-
-        img_comp_hdr = b'COMPRESSED\x00'
-        img_comp_hdr += int.to_bytes(len(img_data), length=4, byteorder='big')
-        img_data = img_comp_hdr + enc_data
-
-    # Append HPM upgrade action image
-    result += hpm.upg_action_img(
+    # Do the actual conversion
+    result = hpm_conv.hpm_conv(
         img_data,
+        args.compress,
+        device_id=args.device,
+        manufacturer_id=args.manufacturer,
+        product_id=args.product,
         components=components,
         version_major=v_maj,
         version_minor=v_min,
         version_aux=v_aux,
         desc_str=args.description or os.path.basename(args.infile)[:20]
     )
-
-    # Append MD5 hash
-    result += hpm.upg_img_hash(result)
-
-    # Determine outfile name
-    outfile = args.outfile
-    if not outfile:
-        outfile = os.path.splitext(args.infile)[0] + '.hpm'
-
     # Write HPM file
     with open(outfile, 'wb') as f:
         f.write(result)
