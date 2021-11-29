@@ -1,13 +1,21 @@
-"""
-SPDX-License-Identifier: BSD-3-Clause
-Copyright (c) 2021 Deutsches Elektronen-Synchrotron DESY.
-See LICENSE.txt for license details.
-"""
+###########################################################################
+#      ____  _____________  __    __  __ _           _____ ___   _        #
+#     / __ \/ ____/ ___/\ \/ /   |  \/  (_)__ _ _ __|_   _/ __| /_\  (R)  #
+#    / / / / __/  \__ \  \  /    | |\/| | / _| '_/ _ \| || (__ / _ \      #
+#   / /_/ / /___ ___/ /  / /     |_|  |_|_\__|_| \___/|_| \___/_/ \_\     #
+#  /_____/_____//____/  /_/      T  E  C  H  N  O  L  O  G  Y   L A B     #
+#                                                                         #
+#          Copyright 2021 Deutsches Elektronen-Synchrotron DESY.          #
+#                  SPDX-License-Identifier: BSD-3-Clause                  #
+#                                                                         #
+###########################################################################
 
-RLE_MAX_BLKSIZE=128
+RLE_MAX_BLKSIZE = 128
+
 
 def to_byte(b):
     return bytes([b])
+
 
 def encode(data):
     def check_block(data):
@@ -38,12 +46,13 @@ def encode(data):
             continue
         result += to_byte((n - 2) | 0x80)
         result += to_byte(val)
-    
+
     comp_len = len(result)
     comp_ratio = 100 * comp_len / orig_len
 
     print(f'Compressed size {comp_len} bytes, ratio {comp_ratio:.1f}%')
     return result
+
 
 def decode(data):
     result = b''
