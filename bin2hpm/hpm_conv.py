@@ -30,11 +30,11 @@ def hpm_conv(img_data, compression_enable, **kwargs):
     # Compress data if compression enabled
     if compression_enable:
         enc_data = rle.encode(img_data)
-        print('Verifying compressed data...', end='')
+        print('Verifying compressed data...')
         if rle.decode(enc_data) != img_data:
             print(f'RLE compression verify mismatch', file=sys.stderr)
             sys.exit(-1)
-        print('OK\n')
+        print('RLE compression verify OK\n')
 
         img_comp_hdr = b'COMPRESSED\x00'
         img_comp_hdr += int.to_bytes(len(img_data), length=4, byteorder='big')
