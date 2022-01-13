@@ -17,7 +17,7 @@ import sys
 # device_id, manufacturer_id, product_id, components, version_major, version_minor, version_aux
 
 
-def hpm_conv(img_data, compression_enable, **kwargs):
+def hpm_conv(img_data, compression_enable, quiet_mode=False, **kwargs):
     # Build HPM upgrade image header
     result = hpm.upg_image_hdr(**kwargs)
 
@@ -29,12 +29,14 @@ def hpm_conv(img_data, compression_enable, **kwargs):
 
     # Compress data if compression enabled
     if compression_enable:
-        enc_data = rle.encode(img_data)
-        print('Verifying compressed data...')
+        enc_data = rle.encode(img_data, quiet_mode)
+        if not quiet_mode:
+            print('Verifying compressed data...')
         if rle.decode(enc_data) != img_data:
             print(f'RLE compression verify mismatch', file=sys.stderr)
             sys.exit(-1)
-        print('RLE compression verify OK\n')
+        if not quiet_mode:
+            print('RLE compression verify OK\n')
 
         img_comp_hdr = b'COMPRESSED\x00'
         img_comp_hdr += int.to_bytes(len(img_data), length=4, byteorder='big')

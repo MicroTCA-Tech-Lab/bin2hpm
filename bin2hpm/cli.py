@@ -76,6 +76,10 @@ def main():
                         type=str,
                         help='Additional description string (max. 21 chars)'
                         )
+    parser.add_argument('-q', '--quiet',
+                        action='store_true',
+                        help='Quiet mode'
+                        )
 
     force_fmt = parser.add_mutually_exclusive_group(required=False)
     force_fmt.add_argument('-b', '--bitfile',
@@ -108,14 +112,15 @@ def main():
         print(f'Input file {args.infile} not found', file=sys.stderr)
         sys.exit(-1)
 
-    # Print general information
-    print(f'bin2hpm v{__version__} (C) 2021 DESY\n')
-    print(
-        f'Input file {args.infile}, length {os.path.getsize(args.infile)} bytes\n')
-    print(
-        f'IANA Manuf., Product 0x{args.manufacturer:06x}, 0x{args.product:04x}')
-    print(f'Component {args.component}, Device {args.device}')
-    print(f'FW version {v_maj}.{v_min:02d} / 0x{args.auxillary:08x}\n')
+    if not args.quiet:
+        # Print general information
+        print(f'bin2hpm v{__version__} (C) 2021 DESY\n')
+        print(
+            f'Input file {args.infile}, length {os.path.getsize(args.infile)} bytes\n')
+        print(
+            f'IANA Manuf., Product 0x{args.manufacturer:06x}, 0x{args.product:04x}')
+        print(f'Component {args.component}, Device {args.device}')
+        print(f'FW version {v_maj}.{v_min:02d} / 0x{args.auxillary:08x}\n')
 
     # Determine outfile name
     outfile = args.outfile
@@ -128,12 +133,13 @@ def main():
 
     # Parse bitfile if bitmode enabled
     if bitmode:
-        img_data = bitfile.parse_bitfile(img_data)
+        img_data = bitfile.parse_bitfile(img_data, args.quiet)
 
     # Do the actual conversion
     result = hpm_conv.hpm_conv(
         img_data,
         args.compress,
+        quiet_mode=args.quiet,
         device_id=args.device,
         manufacturer_id=args.manufacturer,
         product_id=args.product,
@@ -147,4 +153,5 @@ def main():
     with open(outfile, 'wb') as f:
         f.write(result)
 
-    print(f'Output file {outfile}, length {len(result)} bytes')
+    if not args.quiet:
+        print(f'Output file {outfile}, length {len(result)} bytes')

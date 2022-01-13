@@ -19,14 +19,15 @@ def to_byte(b):
     return bytes([b])
 
 
-def encode(data):
+def encode(data, quiet_mode=False):
     def check_block(data, k):
         n = 1
         while (len(data) - k) > n and data[k+n] == data[k] and n < RLE_MAX_BLKSIZE:
             n += 1
         return n, data[k]
 
-    print('Performing RLE compression ...')
+    if not quiet_mode:
+        print('Performing RLE compression ...')
     orig_len = len(data)
 
     result = b''
@@ -58,7 +59,8 @@ def encode(data):
     comp_len = len(result)
     comp_ratio = 100 * comp_len / orig_len
 
-    print(f'Compressed size {comp_len} bytes, ratio {comp_ratio:.1f}%')
+    if not quiet_mode:
+        print(f'Compressed size {comp_len} bytes, ratio {comp_ratio:.1f}%')
     return result
 
 

@@ -40,35 +40,39 @@ class BitfileReader():
         return self.read_n(n)
 
 
-def check_info(bs, section_expected, title):
+def check_info(bs, section_expected, title, quiet_mode=False):
     section_name = bs.read_u8()
     if section_name != ord(section_expected):
         raise ValueError(f'Bitstream section {section_expected} missing')
 
     section_info = bs.read_str()
     section_info = section_info.decode('utf-8')
-    print(f'{title}: {section_info}')
+
+    if not quiet_mode:
+        print(f'{title}: {section_info}')
 
 
-def parse_bitfile(inp):
-    print('Parsing bitfile...')
+def parse_bitfile(inp, quiet_mode=False):
+    if not quiet_mode:
+        print('Parsing bitfile...')
     bs = BitfileReader(inp)
     prologue = bs.read_str()
     one = bs.read_u16()
     if len(prologue) != 9 or one != 1:
         raise ValueError('Bitstream header invalid')
 
-    check_info(bs, 'a', ' Design info')
-    check_info(bs, 'b', '   Part name')
-    check_info(bs, 'c', '   File date')
-    check_info(bs, 'd', '        time')
+    check_info(bs, 'a', ' Design info', quiet_mode)
+    check_info(bs, 'b', '   Part name', quiet_mode)
+    check_info(bs, 'c', '   File date', quiet_mode)
+    check_info(bs, 'd', '        time', quiet_mode)
 
     section_e = bs.read_u8()
     if section_e != ord('e'):
         raise ValueError('Bitstream section e missing')
 
     payload_size = bs.read_u32()
-    print(
-        f'  Image size: 0x{payload_size:08x} ({int(payload_size/1024)}KiB)\n')
+    if not quiet_mode:
+        print(
+            f'  Image size: 0x{payload_size:08x} ({int(payload_size/1024)}KiB)\n')
 
     return bs.read_n(payload_size)
